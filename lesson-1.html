@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learn x86-64 Assembly — Lesson 1: Registers &amp; Your First Instructions (Interactive)</title>
+<meta name="description" content="A free interactive x86-64 assembly lesson. Learn what registers are, run mov, add, sub, and xor live in your browser, and write your first assembly program in an auto-checking sandbox. No installs, no signup.">
+<meta name="keywords" content="learn x86-64 assembly, assembly language tutorial, x86 registers explained, mov instruction, xor rax rax, interactive assembly lesson, assembly for beginners">
+<meta property="og:title" content="Write your first x86-64 assembly — in your browser, right now">
+<meta property="og:description" content="Free interactive lesson: registers, mov, add, sub, xor — with live execution and an auto-checking sandbox. No installs.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://stackframe-hq.github.io/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://stackframe-hq.github.io/lesson-1.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E14'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' font-weight='bold' fill='%23E8B44C' text-anchor='middle'%3E[s]%3C/text%3E%3C/svg%3E">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0E14; --panel: #121826; --panel-2: #0E1420; --line: #1E2738;
+    --amber: #E8B44C; --amber-dim: #8A6C2E; --mint: #5CC8A8; --red: #E06C75;
+    --text: #E6EAF2; --muted: #9AA7BD; --faint: #5B6980;
+    --display: 'Chakra Petch', sans-serif;
+    --body: 'IBM Plex Sans', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--amber); color: var(--bg); }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid var(--line); }
+  .logo { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--text); text-decoration: none; }
+  .logo .bracket { color: var(--amber); }
+  .nav-r { font-family: var(--mono); font-size: 12.5px; color: var(--faint); }
+
+  header.lesson-head { padding: 56px 0 40px; }
+  .eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); margin-bottom: 14px; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 4vw, 42px); line-height: 1.15; margin-bottom: 16px; }
+  .lede { color: var(--muted); font-size: 17px; }
+
+  article h2 { font-family: var(--display); font-weight: 600; font-size: 24px; margin: 56px 0 14px; }
+  article h2 .n { color: var(--amber); font-family: var(--mono); font-size: 17px; margin-right: 10px; }
+  article p { margin: 14px 0; color: var(--text); font-size: 16px; }
+  article p.note { color: var(--muted); font-size: 14.5px; border-left: 2px solid var(--amber-dim); padding-left: 14px; }
+  code { font-family: var(--mono); font-size: .9em; color: var(--amber); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+
+  /* ---- machine / stepper ---- */
+  .machine { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 24px 0; }
+  .machine-bar { display: flex; justify-content: space-between; padding: 10px 16px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--faint); }
+  .machine-body { display: grid; grid-template-columns: 1.3fr 1fr; }
+  .asm { font-family: var(--mono); font-size: 13.5px; padding: 14px 0; line-height: 1.95; border-right: 1px solid var(--line); }
+  .asm-line { padding: 0 16px; display: flex; gap: 13px; }
+  .asm-line .addr { color: var(--faint); user-select: none; }
+  .asm-line .mn { color: var(--amber); }
+  .asm-line.current { background: rgba(232,180,76,.10); }
+  .asm-line.current .addr { color: var(--amber); }
+  .asm-line .cm { color: var(--faint); }
+  .regs { font-family: var(--mono); font-size: 13.5px; padding: 14px 16px; line-height: 2.05; }
+  .reg { display: flex; justify-content: space-between; gap: 12px; }
+  .reg .rn { color: var(--faint); }
+  .reg .rv { color: var(--text); }
+  .reg .rv.changed { color: var(--mint); }
+  .flags { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
+  .machine-controls { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--panel-2); flex-wrap: wrap; }
+  .btn { font-family: var(--display); font-weight: 600; font-size: 14px; border-radius: 6px; cursor: pointer; padding: 8px 18px; border: none; transition: background .15s, color .15s, border-color .15s; }
+  .btn-amber { background: var(--amber); color: var(--bg); }
+  .btn-amber:hover { background: #F2C25E; }
+  .btn-ghost { background: none; color: var(--muted); border: 1px solid var(--line); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--faint); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .hint { font-family: var(--mono); font-size: 12px; color: var(--faint); margin-left: auto; }
+  .hint.done { color: var(--mint); }
+  .btn:focus-visible, a:focus-visible, textarea:focus-visible, .anat-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  /* ---- register anatomy widget ---- */
+  .anat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; margin: 24px 0; }
+  .anat-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .anat-btn { font-family: var(--mono); font-size: 13.5px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; transition: all .15s; }
+  .anat-btn.active { background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 700; }
+  .anat-bar { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin-bottom: 10px; }
+  .nib { font-family: var(--mono); font-size: 13px; text-align: center; padding: 9px 0; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); color: var(--faint); transition: all .15s; }
+  .nib.hot { background: rgba(232,180,76,.16); border-color: var(--amber-dim); color: var(--amber); }
+  .anat-scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--faint); margin-bottom: 14px; }
+  .anat-desc { font-size: 14px; color: var(--muted); min-height: 44px; }
+  .anat-desc b { color: var(--text); font-weight: 600; }
+
+  /* ---- quiz ---- */
+  .quiz { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin: 24px 0; }
+  .quiz-code { font-family: var(--mono); font-size: 14px; line-height: 2; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin-bottom: 14px; }
+  .quiz-row { display: flex; gap: 10px; }
+  .quiz-row input { flex: 1; max-width: 280px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; color: var(--text); font-family: var(--mono); font-size: 14px; outline: none; }
+  .quiz-row input:focus { border-color: var(--amber-dim); }
+  .quiz-row input::placeholder { color: var(--faint); }
+  .quiz-msg { font-family: var(--mono); font-size: 13px; margin-top: 12px; display: none; }
+  .quiz-msg.good { color: var(--mint); display: block; }
+  .quiz-msg.bad { color: var(--red); display: block; }
+
+  /* ---- sandbox ---- */
+  .sandbox { background: var(--panel); border: 1px solid var(--amber-dim); border-radius: 10px; overflow: hidden; margin: 24px 0; }
+  .sandbox .machine-bar { border-bottom: 1px solid var(--line); }
+  .sandbox-grid { display: grid; grid-template-columns: 1.3fr 1fr; }
+  .sandbox textarea {
+    width: 100%; min-height: 200px; background: var(--panel); color: var(--text);
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.9; border: none;
+    border-right: 1px solid var(--line); padding: 14px 16px; resize: vertical; outline: none;
+  }
+  .sandbox textarea::placeholder { color: var(--faint); }
+  .sb-side { padding: 14px 16px; font-family: var(--mono); font-size: 13.5px; line-height: 2.05; }
+  .sb-error { font-family: var(--mono); font-size: 12.5px; color: var(--red); padding: 0 16px 12px; display: none; }
+  .goals { padding: 14px 16px; border-top: 1px solid var(--line); }
+  .goal { display: flex; gap: 10px; font-size: 14px; color: var(--muted); padding: 4px 0; align-items: baseline; }
+  .goal .gk { font-family: var(--mono); color: var(--faint); flex-shrink: 0; width: 20px; }
+  .goal.done { color: var(--text); }
+  .goal.done .gk { color: var(--mint); }
+  .goal codeb { font-family: var(--mono); font-size: .92em; color: var(--amber); }
+  .all-done { display: none; padding: 14px 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 14px; color: var(--mint); }
+
+  /* ---- next / cta ---- */
+  .next { margin: 64px 0 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .next-locked { padding: 24px; background: var(--panel-2); }
+  .next-locked .t { font-family: var(--display); font-weight: 600; font-size: 17px; }
+  .next-locked .t .lock { color: var(--faint); font-size: 14px; margin-left: 8px; }
+  .next-locked p { color: var(--muted); font-size: 14.5px; margin-top: 6px; }
+  .next-cta { padding: 24px; background: var(--panel); border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .next-cta p { font-size: 15px; color: var(--text); }
+  .next-cta a { text-decoration: none; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 32px 0 48px; color: var(--faint); font-size: 13.5px; display: flex; justify-content: space-between; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+  @media (max-width: 700px) {
+    .machine-body, .sandbox-grid { grid-template-columns: 1fr; }
+    .asm, .sandbox textarea { border-right: none; border-bottom: 1px solid var(--line); }
+    .anat-bar { grid-template-columns: repeat(8, 1fr); }
+    .anat-scale { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <a class="logo" href="index.html"><span class="bracket">[</span>stackframe<span class="bracket">]</span></a>
+    <span class="nav-r">lesson 01 / free</span>
+  </nav>
+
+  <header class="lesson-head">
+    <div class="eyebrow">Free lesson — no signup, everything runs in your browser</div>
+    <h1>Registers &amp; your first instructions</h1>
+    <p class="lede">In the next ten minutes you'll learn what a register actually is, execute real x86-64 instructions one at a time, and write your first assembly program — checked live as you go.</p>
+  </header>
+
+  <article>
+
+    <h2><span class="n">1.1</span>What a register actually is</h2>
+    <p>First, thirty seconds on what you're actually learning. Your CPU doesn't run C or Python — it runs <b>machine code</b>, raw bytes like <code>48 31 c0</code>. Assembly is nothing more than a human-readable spelling of those exact bytes: <code>48 31 c0</code> <i>is</i> <code>xor rax, rax</code>, one-to-one. That's why assembly is worth learning — it isn't another language sitting on top of the machine. It's the machine, with names.</p>
+    <p>Strip away everything else and a CPU is a machine that does one thing: it reads an instruction, changes some numbers, and moves to the next instruction. The numbers it changes live in <b>registers</b> — a small set of storage slots built directly into the processor. Each one holds a single 64-bit value. That's it. Not a variable, not an object — a box with 64 bits in it.</p>
+    <p>x86-64 gives you sixteen general-purpose registers. The four you'll use constantly are <code>rax</code>, <code>rbx</code>, <code>rcx</code>, and <code>rdx</code>. They're almost interchangeable, though conventions give them habits — <code>rax</code> tends to hold results, <code>rcx</code> tends to count.</p>
+    <p>Here's the part text tutorials always fumble: registers <b>nest</b>. The same physical box answers to different names depending on how much of it you want. Click the names below and watch which part of the 64-bit register lights up:</p>
+
+    <div class="anat" id="anat">
+      <div class="anat-btns" role="group" aria-label="Register name selector">
+        <button class="anat-btn active" data-r="rax">RAX</button>
+        <button class="anat-btn" data-r="eax">EAX</button>
+        <button class="anat-btn" data-r="ax">AX</button>
+        <button class="anat-btn" data-r="ah">AH</button>
+        <button class="anat-btn" data-r="al">AL</button>
+      </div>
+      <div class="anat-bar" id="anatBar"></div>
+      <div class="anat-scale"><span>bit 63</span><span>bit 0</span></div>
+      <div class="anat-desc" id="anatDesc"></div>
+    </div>
+
+    <p class="note">Same register, five names. Old 8-bit code from 1978 wrote to <code>al</code>; your 64-bit code writes to <code>rax</code>; both touch the same silicon. This is why x86 is called backwards-compatible — and why its register names look weird.</p>
+
+    <p><b>So where does everything else live?</b> Sixteen registers is 128 bytes of storage — your program's data obviously doesn't fit there. Everything else lives in <b>memory</b> (RAM): billions of numbered byte-sized slots the CPU reaches by address. The trade is speed. A register is read in well under a nanosecond; a trip to RAM can cost a hundred times that. So the entire game of assembly — and of the compilers you'll later reverse-engineer — is: pull data from memory into registers, do the real work there, write results back. This lesson stays inside the registers, where the work happens. Memory addressing gets its own lesson once the instructions feel natural.</p>
+
+    <h2><span class="n">1.2</span>mov — your first instruction</h2>
+    <p><code>mov dest, src</code> copies a value into a register. The value can be a number you write directly (an <b>immediate</b>) or the contents of another register. Note the direction: data flows right to left, like an assignment. <code>mov rax, 5</code> means <i>rax = 5</i>.</p>
+    <p>Step through this. Watch the register panel — values that just changed flash green:</p>
+    <div class="machine" data-stepper="movDemo"></div>
+    <p>Three instructions, one value flowing through three registers. Notice <code>mov</code> <i>copies</i> — after line 2, <code>rax</code> still holds <code>0x2a</code>. Nothing "moves out."</p>
+
+    <h2><span class="n">1.3</span>add and sub — arithmetic</h2>
+    <p><code>add</code> and <code>sub</code> work on the destination in place: <code>add rax, 50</code> means <i>rax = rax + 50</i>. Unlike <code>mov</code>, arithmetic instructions also update the CPU's <b>flags</b> — single-bit facts about the last result. You can see one below: <code>ZF</code>, the zero flag, which turns 1 whenever a result equals zero. Flags are how assembly makes decisions, and they're the whole subject of lesson 2. For now, just watch it.</p>
+    <div class="machine" data-stepper="mathDemo"></div>
+
+    <p><b>Quick check.</b> Read this program and predict the final value of <code>rax</code> — <i>before</i> running anything. This is the actual skill you're building: executing code in your head.</p>
+    <div class="quiz" id="quiz1">
+      <div class="quiz-code">mov&nbsp;&nbsp;rax, 8<br>add&nbsp;&nbsp;rax, rax<br>sub&nbsp;&nbsp;rax, 6<br>inc&nbsp;&nbsp;rax</div>
+      <div class="quiz-row">
+        <input type="text" id="quizIn" placeholder="rax = ? (decimal or 0x hex)" aria-label="Your predicted value of rax">
+        <button class="btn btn-amber" id="quizCheck">Check</button>
+      </div>
+      <div class="quiz-msg" id="quizMsg"></div>
+    </div>
+    <div class="machine" data-stepper="quizDemo" style="display:none" id="quizStepper"></div>
+
+    <h2><span class="n">1.4</span>xor — and your first idiom</h2>
+    <p><code>xor</code> is bitwise exclusive-or. Useful on its own, but you'll see one specific line at the top of nearly every real function you ever disassemble:</p>
+    <p style="font-family:var(--mono); color:var(--amber); font-size:15px; padding-left:14px;">xor&nbsp;&nbsp;rax, rax</p>
+    <p>Any value xor'd with itself is zero — so this zeroes <code>rax</code>. Why not <code>mov rax, 0</code>? Same result, but the <code>xor</code> encodes into fewer bytes of machine code, so compilers always pick it. When you can read that line and think "oh, that's just = 0," you've started reading assembly like a native. Prove both work:</p>
+    <div class="machine" data-stepper="xorDemo"></div>
+
+    <h2><span class="n">1.5</span>Now you write it</h2>
+    <p>Below is a live machine with an empty program. It assembles whatever you type and runs it for real. Instructions available: <code>mov</code>, <code>add</code>, <code>sub</code>, <code>xor</code>, <code>inc</code> (+1), <code>dec</code> (−1). Registers: <code>rax rbx rcx rdx rsi rdi</code>. Numbers can be decimal (<code>42</code>) or hex (<code>0x2a</code>). Comments start with <code>;</code>.</p>
+    <p>Three goals. The machine checks them every time you run:</p>
+
+    <div class="sandbox">
+      <div class="machine-bar"><span>sandbox / write your own</span><span id="sbStatus">ready</span></div>
+      <div class="sandbox-grid">
+        <textarea id="sbCode" spellcheck="false" aria-label="Assembly code editor" placeholder="; type your program here, e.g.
+;   mov rax, 40
+;   add rax, 2"></textarea>
+        <div class="sb-side" id="sbRegs"></div>
+      </div>
+      <div class="sb-error" id="sbError"></div>
+      <div class="machine-controls">
+        <button class="btn btn-amber" id="sbRun">Assemble &amp; run ▸</button>
+        <button class="btn btn-ghost" id="sbStep">Step</button>
+        <button class="btn btn-ghost" id="sbReset">Reset</button>
+      </div>
+      <div class="goals">
+        <div class="goal" id="goal1"><span class="gk">[ ]</span><span>Get the value <codeb>0x2a</codeb> (decimal 42) into <codeb>rax</codeb></span></div>
+        <div class="goal" id="goal2"><span class="gk">[ ]</span><span>Put the same non-zero value into <codeb>rbx</codeb> and <codeb>rcx</codeb> — using a register-to-register <codeb>mov</codeb>, not two immediates</span></div>
+        <div class="goal" id="goal3"><span class="gk">[ ]</span><span>Zero out <codeb>rdx</codeb> the compiler's way — with <codeb>xor</codeb>, not <codeb>mov</codeb></span></div>
+        <div class="goal" id="goal4"><span class="gk">[ ]</span><span><b>Stretch:</b> get 42 into <codeb>rax</codeb> again — without typing a single number. Registers only. (Hint: <codeb>add rax, rax</codeb> doubles. 42 = 32 + 8 + 2.)</span></div>
+      </div>
+      <div class="all-done" id="allDone">&gt; all three. you just wrote x86-64 assembly. welcome to ring 3.</div>
+      <div class="all-done" id="stretchDone">&gt; ★ stretch complete — building constants from doubling and adding is exactly how compilers multiply. You reinvented shift-and-add.</div>
+    </div>
+
+    <p class="note">Stuck on goal 2? Load a value into <code>rbx</code> first, then copy it: <code>mov rcx, rbx</code>. That's how data actually travels between registers.</p>
+    <p class="note">Subtracted below zero and got <code>0xffffffffffffffff</code>? Not a bug — registers hold raw 64-bit patterns with no minus sign, so values wrap around. That pattern is how the machine represents −1 (two's complement — it gets a proper explanation in a later lesson, and it's cooler than it sounds).</p>
+
+    <div class="next">
+      <div class="next-locked">
+        <div class="t">Lesson 2 — Flags &amp; branching <span class="lock">// locked until launch</span></div>
+        <p>That ZF flag you watched flip? Next lesson it starts making decisions: <code>cmp</code>, conditional jumps, and building your first loop — the pattern behind every <code>if</code> and <code>while</code> ever compiled.</p>
+      </div>
+      <div class="next-cta">
+        <p>StackFrame launches soon. Two lessons free forever, full course $19/mo.</p>
+        <a class="btn btn-amber" href="index.html#top">Join the waitlist</a>
+      </div>
+    </div>
+
+  </article>
+
+  <footer>
+    <span>© 2026 StackFrame</span>
+    <span><a href="index.html">Home</a></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var MASK = (1n << 64n) - 1n;
+  var REGS = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi"];
+
+  function hex(v) {
+    var s = v.toString(16);
+    return "0x" + (s.length < 4 ? s.padStart(4, "0") : s);
+  }
+
+  /* ================= reusable stepper ================= */
+  function Stepper(el, cfg) {
+    var state, prev, halted, ip;
+    var body = document.createElement("div");
+    el.innerHTML =
+      '<div class="machine-bar"><span>' + cfg.title + '</span><span></span></div>';
+    body.className = "machine-body";
+    body.innerHTML = '<div class="asm"></div><div class="regs"></div>';
+    el.appendChild(body);
+    var ctrl = document.createElement("div");
+    ctrl.className = "machine-controls";
+    ctrl.innerHTML =
+      '<button class="btn btn-amber">Step ▸</button>' +
+      '<button class="btn btn-ghost">Reset</button>' +
+      '<span class="hint">press step to execute</span>';
+    el.appendChild(ctrl);
+    var asmEl = body.children[0], regEl = body.children[1];
+    var btnStep = ctrl.children[0], btnReset = ctrl.children[1], hintEl = ctrl.children[2];
+
+    function reset() {
+      state = { rax: 0n, rbx: 0n, rcx: 0n, rdx: 0n, zf: 0 };
+      if (cfg.init) cfg.init(state);
+      prev = null; halted = false; ip = 0;
+      btnStep.disabled = false;
+      hintEl.textContent = "press step to execute";
+      hintEl.classList.remove("done");
+      render();
+    }
+    function render() {
+      var out = "";
+      for (var i = 0; i < cfg.program.length; i++) {
+        var p = cfg.program[i];
+        out += '<div class="asm-line' + (i === ip && !halted ? " current" : "") + '">' +
+          '<span class="addr">' + p.addr + '</span><span>' + p.html + "</span></div>";
+      }
+      asmEl.innerHTML = out;
+      var r = "";
+      cfg.show.forEach(function (name) {
+        var v = state[name];
+        var ch = prev && prev[name] !== v;
+        r += '<div class="reg"><span class="rn">' + name.toUpperCase() +
+          '</span><span class="rv' + (ch ? " changed" : "") + '">' + hex(v) + "</span></div>";
+      });
+      r += '<div class="flags">flags&nbsp;&nbsp;ZF=' + state.zf + "</div>";
+      regEl.innerHTML = r;
+    }
+    function step() {
+      if (halted) return;
+      prev = {}; cfg.show.forEach(function (n) { prev[n] = state[n]; });
+      var instr = cfg.program[ip];
+      instr.run(state);
+      ip++;
+      if (ip >= cfg.program.length) {
+        halted = true;
+        btnStep.disabled = true;
+        hintEl.textContent = cfg.payoff;
+        hintEl.classList.add("done");
+      } else {
+        hintEl.textContent = "executed " + instr.addr;
+      }
+      render();
+    }
+    btnStep.addEventListener("click", step);
+    btnReset.addEventListener("click", reset);
+    reset();
+  }
+
+  var steppers = {
+    movDemo: {
+      title: "demo / mov",
+      show: ["rax", "rbx", "rcx"],
+      payoff: "one value, three registers — and rax still has its copy",
+      program: [
+        { addr: "0x1000", html: '<span class="mn">mov</span>&nbsp;&nbsp;rax, 0x2a', run: function (s) { s.rax = 0x2an; } },
+        { addr: "0x1007", html: '<span class="mn">mov</span>&nbsp;&nbsp;rbx, rax', run: function (s) { s.rbx = s.rax; } },
+        { addr: "0x100a", html: '<span class="mn">mov</span>&nbsp;&nbsp;rcx, rbx', run: function (s) { s.rcx = s.rbx; } }
+      ]
+    },
+    mathDemo: {
+      title: "demo / add & sub",
+      show: ["rax", "rbx"],
+      payoff: "rax = 100 + 50 − 150 = 0 … and ZF noticed",
+      program: [
+        { addr: "0x1000", html: '<span class="mn">mov</span>&nbsp;&nbsp;rax, 100', run: function (s) { s.rax = 100n; } },
+        { addr: "0x1007", html: '<span class="mn">add</span>&nbsp;&nbsp;rax, 50', run: function (s) { s.rax = (s.rax + 50n) & MASK; s.zf = s.rax === 0n ? 1 : 0; } },
+        { addr: "0x100b", html: '<span class="mn">sub</span>&nbsp;&nbsp;rax, 150', run: function (s) { s.rax = (s.rax - 150n) & MASK; s.zf = s.rax === 0n ? 1 : 0; } }
+      ]
+    },
+    xorDemo: {
+      title: "demo / two ways to zero",
+      show: ["rax", "rbx"],
+      payoff: "same result — but xor is the one you'll see in real binaries",
+      init: function (s) { s.rax = 0xffn; s.rbx = 0xffn; },
+      program: [
+        { addr: "0x1000", html: '<span class="mn">xor</span>&nbsp;&nbsp;rax, rax&nbsp;&nbsp;<span class="cm">; the idiom</span>', run: function (s) { s.rax = 0n; s.zf = 1; } },
+        { addr: "0x1003", html: '<span class="mn">mov</span>&nbsp;&nbsp;rbx, 0&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">; the obvious way</span>', run: function (s) { s.rbx = 0n; } }
+      ]
+    },
+    quizDemo: {
+      title: "verify / step through your prediction",
+      show: ["rax"],
+      payoff: "rax = ((8 + 8) − 6) + 1 = 11 = 0xb",
+      program: [
+        { addr: "0x1000", html: '<span class="mn">mov</span>&nbsp;&nbsp;rax, 8', run: function (s) { s.rax = 8n; } },
+        { addr: "0x1007", html: '<span class="mn">add</span>&nbsp;&nbsp;rax, rax', run: function (s) { s.rax = (s.rax + s.rax) & MASK; s.zf = s.rax === 0n ? 1 : 0; } },
+        { addr: "0x100a", html: '<span class="mn">sub</span>&nbsp;&nbsp;rax, 6', run: function (s) { s.rax = (s.rax - 6n) & MASK; s.zf = s.rax === 0n ? 1 : 0; } },
+        { addr: "0x100e", html: '<span class="mn">inc</span>&nbsp;&nbsp;rax', run: function (s) { s.rax = (s.rax + 1n) & MASK; s.zf = s.rax === 0n ? 1 : 0; } }
+      ]
+    }
+  };
+  document.querySelectorAll("[data-stepper]").forEach(function (el) {
+    Stepper(el, steppers[el.getAttribute("data-stepper")]);
+  });
+
+  /* ================= prediction quiz ================= */
+  var quizIn = document.getElementById("quizIn");
+  var quizMsg = document.getElementById("quizMsg");
+  function checkQuiz() {
+    var raw = quizIn.value.trim().toLowerCase();
+    var v = null;
+    if (/^0x[0-9a-f]+$/.test(raw)) v = BigInt(raw);
+    else if (/^[0-9]+$/.test(raw)) v = BigInt(raw);
+    if (v === null) {
+      quizMsg.className = "quiz-msg bad";
+      quizMsg.textContent = "✗ enter a number — decimal (11) or hex (0xb)";
+      return;
+    }
+    document.getElementById("quizStepper").style.display = "";
+    if (v === 11n) {
+      quizMsg.className = "quiz-msg good";
+      quizMsg.textContent = "✓ correct — rax ends at 0xb. add rax, rax doubled it: a trick worth remembering. Step through below to watch it happen.";
+    } else {
+      quizMsg.className = "quiz-msg bad";
+      quizMsg.textContent = "✗ not quite — the machine below has the same program. Step through it and find where your trace diverged.";
+    }
+  }
+  document.getElementById("quizCheck").addEventListener("click", checkQuiz);
+  quizIn.addEventListener("keydown", function (e) { if (e.key === "Enter") checkQuiz(); });
+
+  /* ================= register anatomy ================= */
+  var anatInfo = {
+    rax: { hot: [0, 16], d: "<b>RAX</b> — all 64 bits. The 'R' prefix means the full register. This is what you use in 64-bit code." },
+    eax: { hot: [8, 16], d: "<b>EAX</b> — the low 32 bits. The 'E' prefix dates to 1985, when registers were 'Extended' from 16 to 32 bits. Writing to EAX zeroes the upper half of RAX — a famous x86-64 quirk." },
+    ax:  { hot: [12, 16], d: "<b>AX</b> — the low 16 bits, the original 1978 register. 'A' stood for Accumulator." },
+    ah:  { hot: [12, 14], d: "<b>AH</b> — the <i>high byte</i> of AX (bits 8–15). One of the few ways to grab the middle of a register directly." },
+    al:  { hot: [14, 16], d: "<b>AL</b> — the <i>low byte</i> of AX (bits 0–7). Just 8 bits. Byte-sized operations like character handling use these." }
+  };
+  var anatBar = document.getElementById("anatBar");
+  var anatDesc = document.getElementById("anatDesc");
+  var sample = "00000000000004D2"; // 1234 — arbitrary sample value
+  for (var i = 0; i < 16; i++) {
+    var n = document.createElement("div");
+    n.className = "nib";
+    n.textContent = sample[i];
+    anatBar.appendChild(n);
+  }
+  function setAnat(name) {
+    var info = anatInfo[name];
+    var nibs = anatBar.children;
+    for (var i = 0; i < 16; i++) {
+      nibs[i].className = "nib" + (i >= info.hot[0] && i < info.hot[1] ? " hot" : "");
+    }
+    anatDesc.innerHTML = info.d;
+  }
+  document.querySelectorAll(".anat-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".anat-btn").forEach(function (x) { x.classList.remove("active"); });
+      b.classList.add("active");
+      setAnat(b.getAttribute("data-r"));
+    });
+  });
+  setAnat("rax");
+
+  /* ================= sandbox: mini assembler ================= */
+  var sbCode = document.getElementById("sbCode");
+  var sbRegs = document.getElementById("sbRegs");
+  var sbError = document.getElementById("sbError");
+  var sbStatus = document.getElementById("sbStatus");
+  var sbRun = document.getElementById("sbRun");
+  var sbStep = document.getElementById("sbStep");
+  var sbReset = document.getElementById("sbReset");
+  var goalsDone = [false, false, false, false];
+
+  function freshCPU() {
+    var c = { zf: 0 };
+    REGS.forEach(function (r) { c[r] = 0n; });
+    return c;
+  }
+  var cpu = freshCPU();
+  var prevCpu = null;
+  var stepProg = null, stepIdx = 0;
+
+  function parseImm(tok) {
+    if (/^0x[0-9a-f]+$/i.test(tok)) return BigInt(tok);
+    if (/^[0-9]+$/.test(tok)) return BigInt(tok);
+    return null;
+  }
+
+  function assemble(src) {
+    var prog = [];
+    var lines = src.split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].split(";")[0].trim().toLowerCase();
+      if (!line) continue;
+      var m = line.match(/^([a-z]+)\s*(.*)$/);
+      if (!m) return { error: "line " + (i + 1) + ": can't parse '" + line + "'" };
+      var mn = m[1];
+      var ops = m[2] ? m[2].split(",").map(function (s) { return s.trim(); }) : [];
+      var need2 = ["mov", "add", "sub", "xor"];
+      var need1 = ["inc", "dec"];
+      if (need2.indexOf(mn) >= 0) {
+        if (ops.length !== 2) return { error: "line " + (i + 1) + ": " + mn + " needs 2 operands, e.g. " + mn + " rax, 5" };
+        if (REGS.indexOf(ops[0]) < 0) return { error: "line " + (i + 1) + ": '" + ops[0] + "' isn't a register I know (try " + REGS.join(" ") + ")" };
+        if (REGS.indexOf(ops[1]) < 0 && parseImm(ops[1]) === null)
+          return { error: "line " + (i + 1) + ": '" + ops[1] + "' should be a register or a number (42 or 0x2a)" };
+      } else if (need1.indexOf(mn) >= 0) {
+        if (ops.length !== 1 || REGS.indexOf(ops[0]) < 0)
+          return { error: "line " + (i + 1) + ": " + mn + " needs one register, e.g. " + mn + " rcx" };
+      } else if (mn === "nop") {
+        // fine
+      } else {
+        return { error: "line " + (i + 1) + ": unknown instruction '" + mn + "' — this lesson has mov, add, sub, xor, inc, dec" };
+      }
+      prog.push({ ln: i + 1, mn: mn, ops: ops, text: line });
+    }
+    if (prog.length === 0) return { error: "write at least one instruction first — try mov rax, 42" };
+    return { prog: prog };
+  }
+
+  function execOne(c, instr) {
+    var val = function (tok) { return REGS.indexOf(tok) >= 0 ? c[tok] : parseImm(tok); };
+    var d = instr.ops[0];
+    switch (instr.mn) {
+      case "mov": c[d] = val(instr.ops[1]) & MASK; break;
+      case "add": c[d] = (c[d] + val(instr.ops[1])) & MASK; c.zf = c[d] === 0n ? 1 : 0; break;
+      case "sub": c[d] = (c[d] - val(instr.ops[1])) & MASK; c.zf = c[d] === 0n ? 1 : 0; break;
+      case "xor": c[d] = (c[d] ^ val(instr.ops[1])) & MASK; c.zf = c[d] === 0n ? 1 : 0; break;
+      case "inc": c[d] = (c[d] + 1n) & MASK; c.zf = c[d] === 0n ? 1 : 0; break;
+      case "dec": c[d] = (c[d] - 1n) & MASK; c.zf = c[d] === 0n ? 1 : 0; break;
+      case "nop": break;
+    }
+  }
+
+  function renderRegs(currentLn) {
+    var out = "";
+    REGS.forEach(function (r) {
+      var ch = prevCpu && prevCpu[r] !== cpu[r];
+      out += '<div class="reg"><span class="rn">' + r.toUpperCase() +
+        '</span><span class="rv' + (ch ? " changed" : "") + '">' + hex(cpu[r]) + "</span></div>";
+    });
+    out += '<div class="flags">ZF=' + cpu.zf +
+      (currentLn ? '&nbsp;&nbsp;·&nbsp;&nbsp;next: line ' + currentLn : "") + "</div>";
+    sbRegs.innerHTML = out;
+  }
+
+  function showError(msg) {
+    sbError.textContent = "✗ " + msg;
+    sbError.style.display = "block";
+    sbStatus.textContent = "error";
+  }
+  function clearError() {
+    sbError.style.display = "none";
+  }
+
+  function checkGoals(prog) {
+    if (cpu.rax === 0x2an) goalsDone[0] = true;
+    var hasRegMov = prog.some(function (p) {
+      return p.mn === "mov" && REGS.indexOf(p.ops[1]) >= 0;
+    });
+    if (cpu.rbx !== 0n && cpu.rbx === cpu.rcx && hasRegMov) goalsDone[1] = true;
+    var hasXorRdx = prog.some(function (p) {
+      return p.mn === "xor" && p.ops[0] === "rdx" && p.ops[1] === "rdx";
+    });
+    if (cpu.rdx === 0n && hasXorRdx) goalsDone[2] = true;
+
+    var registersOnly = prog.every(function (p) {
+      return p.ops.every(function (op) { return REGS.indexOf(op) >= 0; });
+    });
+    if (cpu.rax === 42n && registersOnly && prog.length > 0) goalsDone[3] = true;
+
+    goalsDone.forEach(function (done, i) {
+      var g = document.getElementById("goal" + (i + 1));
+      if (done) {
+        g.classList.add("done");
+        g.querySelector(".gk").textContent = i === 3 ? "[★]" : "[✓]";
+      }
+    });
+    if (goalsDone.slice(0, 3).every(function (d) { return d; })) {
+      document.getElementById("allDone").style.display = "block";
+    }
+    if (goalsDone[3]) {
+      document.getElementById("stretchDone").style.display = "block";
+    }
+  }
+
+  sbRun.addEventListener("click", function () {
+    clearError();
+    var res = assemble(sbCode.value);
+    if (res.error) { showError(res.error); return; }
+    cpu = freshCPU(); prevCpu = null; stepProg = null;
+    res.prog.forEach(function (ins) { execOne(cpu, ins); });
+    renderRegs(null);
+    sbStatus.textContent = "ran " + res.prog.length + " instruction" + (res.prog.length === 1 ? "" : "s");
+    checkGoals(res.prog);
+  });
+
+  sbStep.addEventListener("click", function () {
+    clearError();
+    if (!stepProg) {
+      var res = assemble(sbCode.value);
+      if (res.error) { showError(res.error); return; }
+      stepProg = res.prog; stepIdx = 0;
+      cpu = freshCPU(); prevCpu = null;
+      renderRegs(stepProg[0].ln);
+      sbStatus.textContent = "stepping — press again";
+      return;
+    }
+    if (stepIdx >= stepProg.length) return;
+    prevCpu = {}; REGS.forEach(function (r) { prevCpu[r] = cpu[r]; });
+    execOne(cpu, stepProg[stepIdx]);
+    stepIdx++;
+    var nextLn = stepIdx < stepProg.length ? stepProg[stepIdx].ln : null;
+    renderRegs(nextLn);
+    if (stepIdx >= stepProg.length) {
+      sbStatus.textContent = "done";
+      checkGoals(stepProg);
+      stepProg = null;
+    } else {
+      sbStatus.textContent = "executed line " + stepProg[stepIdx - 1].ln;
+    }
+  });
+
+  sbReset.addEventListener("click", function () {
+    cpu = freshCPU(); prevCpu = null; stepProg = null;
+    clearError();
+    renderRegs(null);
+    sbStatus.textContent = "ready";
+  });
+
+  renderRegs(null);
+})();
+</script>
+
+</body>
+</html>

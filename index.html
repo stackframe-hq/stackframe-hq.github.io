@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackFrame — Learn x86-64 Assembly & Reverse Engineering Interactively</title>
+<meta name="description" content="Learn x86-64 assembly and reverse engineering by stepping through real instructions in your browser. Watch registers, flags, and the stack change live. Free interactive lessons — no signup, no installs.">
+<meta name="keywords" content="learn x86-64 assembly, interactive assembly course, reverse engineering for beginners, assembly language tutorial, learn reverse engineering, x86 assembly online, malware analysis basics, CTF reverse engineering">
+<meta property="og:title" content="StackFrame — Learn x86-64 Assembly by Stepping Through It">
+<meta property="og:description" content="An interactive x86-64 assembly and reverse engineering course that runs entirely in your browser. Step through real instructions. Watch the machine think.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://stackframe-hq.github.io/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://stackframe-hq.github.io/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E14'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' font-weight='bold' fill='%23E8B44C' text-anchor='middle'%3E[s]%3C/text%3E%3C/svg%3E">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is x86-64 assembly hard to learn?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Assembly has a reputation for being hard because most tutorials are walls of text. When you can step through each instruction and watch registers change live, the mental model clicks in hours, not months. StackFrame is built around that feedback loop." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to install anything to learn assembly here?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Every lesson, exercise, and challenge runs directly in your browser. No virtual machines, no toolchains, no setup." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is this useful for reverse engineering, malware analysis, or CTFs?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. The curriculum starts at registers and instructions and builds to reading real disassembly, understanding calling conventions and the stack, and solving crackme-style reverse engineering challenges — the core skills behind malware analysis, CTF rev challenges, and game hacking." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is StackFrame free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The first lessons are free forever with no signup. The full course with all challenges and progress tracking is $19/month." }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg: #0B0E14;
+    --panel: #121826;
+    --panel-2: #0E1420;
+    --line: #1E2738;
+    --amber: #E8B44C;
+    --amber-dim: #8A6C2E;
+    --mint: #5CC8A8;
+    --text: #E6EAF2;
+    --muted: #9AA7BD;
+    --faint: #5B6980;
+    --display: 'Chakra Petch', sans-serif;
+    --body: 'IBM Plex Sans', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--amber); color: var(--bg); }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ------- nav ------- */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .logo {
+    font-family: var(--mono); font-weight: 700; font-size: 17px;
+    color: var(--text); text-decoration: none; letter-spacing: 0.02em;
+  }
+  .logo .bracket { color: var(--amber); }
+  .nav-links { display: flex; gap: 28px; align-items: center; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 500;
+    transition: color .15s;
+  }
+  .nav-links a:hover, .nav-links a:focus-visible { color: var(--text); }
+  .nav-cta {
+    background: var(--amber); color: var(--bg) !important;
+    padding: 8px 18px; border-radius: 6px; font-weight: 600 !important;
+  }
+  .nav-cta:hover { background: #F2C25E; }
+
+  /* ------- hero ------- */
+  .hero {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
+    padding: 88px 0 96px; align-items: center;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--amber); margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 700;
+    font-size: clamp(34px, 4.4vw, 52px); line-height: 1.12;
+    letter-spacing: -0.01em; margin-bottom: 20px;
+  }
+  h1 .hl { color: var(--amber); }
+  .hero p.lede {
+    font-size: 17.5px; color: var(--muted); max-width: 46ch; margin-bottom: 32px;
+  }
+  .waitlist { display: flex; gap: 10px; max-width: 460px; }
+  .waitlist input {
+    flex: 1; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 6px; padding: 13px 16px; color: var(--text);
+    font-family: var(--body); font-size: 15px; outline: none;
+    transition: border-color .15s;
+  }
+  .waitlist input:focus { border-color: var(--amber-dim); }
+  .waitlist input::placeholder { color: var(--faint); }
+  .waitlist button {
+    background: var(--amber); color: var(--bg); border: none; border-radius: 6px;
+    padding: 13px 22px; font-family: var(--display); font-weight: 600;
+    font-size: 15px; cursor: pointer; white-space: nowrap; transition: background .15s;
+  }
+  .waitlist button:hover { background: #F2C25E; }
+  .waitlist button:focus-visible, .waitlist input:focus-visible,
+  a:focus-visible, .btn-step:focus-visible, .btn-reset:focus-visible {
+    outline: 2px solid var(--amber); outline-offset: 2px;
+  }
+  .form-note { font-size: 13px; color: var(--faint); margin-top: 12px; }
+  .form-success {
+    display: none; font-family: var(--mono); font-size: 14px; color: var(--mint);
+    margin-top: 12px;
+  }
+
+  /* ------- stepper (signature element) ------- */
+  .machine {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  }
+  .machine-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 16px; background: var(--panel-2); border-bottom: 1px solid var(--line);
+  }
+  .machine-title { font-family: var(--mono); font-size: 12.5px; color: var(--faint); }
+  .machine-title .live {
+    color: var(--mint);
+  }
+  .live::before {
+    content: "●"; margin-right: 6px; animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .machine-body { display: grid; grid-template-columns: 1.25fr 1fr; }
+  .asm {
+    font-family: var(--mono); font-size: 13.5px; padding: 16px 0; line-height: 1.9;
+    border-right: 1px solid var(--line);
+  }
+  .asm-line { padding: 0 18px; display: flex; gap: 14px; transition: background .18s; }
+  .asm-line .addr { color: var(--faint); user-select: none; }
+  .asm-line .op { color: var(--text); }
+  .asm-line .op .mn { color: var(--amber); }
+  .asm-line.current { background: rgba(232,180,76,.10); }
+  .asm-line.current .addr { color: var(--amber); }
+  .regs {
+    font-family: var(--mono); font-size: 13.5px; padding: 16px 18px; line-height: 2.05;
+  }
+  .reg { display: flex; justify-content: space-between; }
+  .reg .rn { color: var(--faint); }
+  .reg .rv { color: var(--text); transition: color .2s; }
+  .reg .rv.changed { color: var(--mint); }
+  .flags { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
+  .flags b { color: var(--muted); font-weight: 500; }
+  .machine-controls {
+    display: flex; gap: 10px; align-items: center;
+    padding: 13px 16px; border-top: 1px solid var(--line); background: var(--panel-2);
+  }
+  .btn-step {
+    background: var(--amber); color: var(--bg); border: none; border-radius: 6px;
+    padding: 8px 20px; font-family: var(--display); font-weight: 600; font-size: 14px;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-step:hover { background: #F2C25E; }
+  .btn-reset {
+    background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 6px;
+    padding: 8px 16px; font-family: var(--display); font-weight: 500; font-size: 14px;
+    cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .btn-reset:hover { color: var(--text); border-color: var(--faint); }
+  .machine-hint { font-family: var(--mono); font-size: 12px; color: var(--faint); margin-left: auto; }
+  .machine-hint.done { color: var(--mint); }
+
+  /* ------- sections ------- */
+  section { padding: 84px 0; border-top: 1px solid var(--line); }
+  .sec-eyebrow {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--amber); margin-bottom: 14px;
+  }
+  h2 {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(26px, 3vw, 34px); line-height: 1.2; margin-bottom: 16px;
+  }
+  .sec-lede { color: var(--muted); font-size: 16.5px; max-width: 62ch; margin-bottom: 44px; }
+
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .how-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 26px 24px;
+  }
+  .how-card .k {
+    font-family: var(--mono); font-size: 12.5px; color: var(--amber); margin-bottom: 12px;
+    display: block;
+  }
+  .how-card h3 { font-family: var(--display); font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+  .how-card p { color: var(--muted); font-size: 14.5px; }
+
+  /* curriculum */
+  .curr { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+  .mod {
+    display: flex; gap: 16px; align-items: baseline;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .mod .idx { font-family: var(--mono); font-size: 13px; color: var(--amber); flex-shrink: 0; }
+  .mod .t { font-weight: 600; font-size: 15.5px; }
+  .mod .d { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+  .mod.free { border-color: var(--amber-dim); }
+  a.mod { text-decoration: none; color: inherit; transition: border-color .15s; }
+  a.mod:hover { border-color: var(--amber); }
+  .lnk { color: var(--amber); text-decoration: none; border-bottom: 1px solid var(--amber-dim); }
+  .lnk:hover { color: #F2C25E; border-bottom-color: var(--amber); }
+  .tag-free {
+    font-family: var(--mono); font-size: 11px; color: var(--bg); background: var(--amber);
+    border-radius: 4px; padding: 1px 7px; margin-left: 8px; vertical-align: 2px;
+  }
+
+  /* pricing */
+  .pricing { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 780px; }
+  .price-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 30px 28px;
+  }
+  .price-card.pro { border-color: var(--amber-dim); position: relative; }
+  .price-card h3 { font-family: var(--display); font-size: 19px; font-weight: 600; }
+  .price {
+    font-family: var(--display); font-size: 38px; font-weight: 700; margin: 14px 0 4px;
+  }
+  .price .per { font-size: 15px; color: var(--faint); font-weight: 500; }
+  .price-card ul { list-style: none; margin-top: 20px; }
+  .price-card li {
+    color: var(--muted); font-size: 14.5px; padding: 6px 0 6px 24px; position: relative;
+  }
+  .price-card li::before {
+    content: ">"; font-family: var(--mono); color: var(--amber);
+    position: absolute; left: 0;
+  }
+  .price-cta {
+    display: inline-block; margin-top: 24px; text-decoration: none;
+    background: var(--amber); color: var(--bg); border-radius: 6px;
+    padding: 11px 24px; font-family: var(--display); font-weight: 600; font-size: 14.5px;
+    transition: background .15s;
+  }
+  .price-cta:hover { background: #F2C25E; }
+  .price-cta.ghost {
+    background: none; color: var(--text); border: 1px solid var(--line);
+  }
+  .price-cta.ghost:hover { border-color: var(--faint); background: none; }
+
+  /* faq */
+  .faq { max-width: 760px; }
+  .faq details {
+    border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+    margin-bottom: 12px; padding: 0 22px;
+  }
+  .faq summary {
+    cursor: pointer; font-weight: 600; font-size: 15.5px; padding: 18px 0;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: "+"; font-family: var(--mono); color: var(--amber); font-size: 18px;
+  }
+  .faq details[open] summary::after { content: "–"; }
+  .faq details p { color: var(--muted); font-size: 14.5px; padding-bottom: 18px; }
+
+  footer {
+    border-top: 1px solid var(--line); padding: 36px 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--faint); font-size: 13.5px;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 56px 0 64px; gap: 40px; }
+    .how { grid-template-columns: 1fr; }
+    .curr { grid-template-columns: 1fr; }
+    .pricing { grid-template-columns: 1fr; }
+    .machine-body { grid-template-columns: 1fr; }
+    .asm { border-right: none; border-bottom: 1px solid var(--line); }
+    .nav-links a:not(.nav-cta) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <a class="logo" href="#"><span class="bracket">[</span>stackframe<span class="bracket">]</span></a>
+    <div class="nav-links">
+      <a href="lesson-1.html">Free lesson</a>
+      <a href="#how">How it works</a>
+      <a href="#curriculum">Curriculum</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="#top">Join the waitlist</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div>
+      <div class="eyebrow">Interactive x86-64 assembly &amp; reverse engineering</div>
+      <h1>Learn assembly by <span class="hl">stepping through it</span> — right in your browser.</h1>
+      <p class="lede">Most assembly tutorials are walls of text. StackFrame puts a live machine in front of you: execute real x86-64 instructions one at a time, watch registers and flags change, and build up to reading real disassembly and cracking your first binary.</p>
+      <form class="waitlist" id="waitlistForm" action="https://formspree.io/f/maqrjvpy" method="POST">
+        <input type="email" name="email" placeholder="you@example.com" required aria-label="Email address">
+        <button type="submit">Get early access</button>
+      </form>
+      <p class="form-note">No spam — one email when the full course is live. Lesson 1 is <a class="lnk" href="lesson-1.html">already free to try →</a></p>
+      <p class="form-success" id="formSuccess">&gt; You're on the list. See you at ring 3.</p>
+    </div>
+
+    <div class="machine" aria-label="Live x86-64 instruction stepper demo">
+      <div class="machine-bar">
+        <span class="machine-title">lesson_00 / your first instructions</span>
+        <span class="machine-title live">live</span>
+      </div>
+      <div class="machine-body">
+        <div class="asm" id="asmView"></div>
+        <div class="regs" id="regView"></div>
+      </div>
+      <div class="machine-controls">
+        <button class="btn-step" id="btnStep">Step ▸</button>
+        <button class="btn-reset" id="btnReset">Reset</button>
+        <span class="machine-hint" id="hint">press step to execute</span>
+      </div>
+    </div>
+  </header>
+
+  <section id="how">
+    <div class="sec-eyebrow">How it works</div>
+    <h2>See the machine think.</h2>
+    <p class="sec-lede">Every lesson pairs a short explanation with an executable environment. You don't read about what <code style="font-family:var(--mono);color:var(--amber);font-size:.92em;">xor rax, rax</code> does — you run it and watch RAX zero out.</p>
+    <div class="how">
+      <div class="how-card">
+        <span class="k">01 — execute</span>
+        <h3>Step through real instructions</h3>
+        <p>Run x86-64 code one instruction at a time with live register, flag, and stack visualization. No installs, no VMs, no toolchain setup.</p>
+      </div>
+      <div class="how-card">
+        <span class="k">02 — read</span>
+        <h3>Learn to read disassembly</h3>
+        <p>Progress from writing tiny programs to reading compiler output — loops, branches, calling conventions, and the stack frames this site is named after.</p>
+      </div>
+      <div class="how-card">
+        <span class="k">03 — crack</span>
+        <h3>Solve real challenges</h3>
+        <p>Every module ends in crackme-style challenges: find the password, patch the check, trace the algorithm. The same skills behind CTFs and malware analysis.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="curriculum">
+    <div class="sec-eyebrow">Curriculum</div>
+    <h2>From "what's a register?" to reading real binaries.</h2>
+    <p class="sec-lede">A structured path — each module unlocks the next. The first two are free forever, no account needed.</p>
+    <div class="curr">
+      <a class="mod free" href="lesson-1.html">
+        <span class="idx">M0</span>
+        <div><div class="t">The Machine <span class="tag-free">FREE</span></div><div class="d">Registers, memory, and why assembly isn't scary</div></div>
+      </a>
+      <a class="mod free" href="lesson-1.html">
+        <span class="idx">M1</span>
+        <div><div class="t">First Instructions <span class="tag-free">FREE</span></div><div class="d">mov, add, sub, xor — executing your first code</div></div>
+      </a>
+      <div class="mod">
+        <span class="idx">M2</span>
+        <div><div class="t">Flags &amp; Branching</div><div class="d">cmp, jmp, conditional jumps, building loops</div></div>
+      </div>
+      <div class="mod">
+        <span class="idx">M3</span>
+        <div><div class="t">The Stack</div><div class="d">push, pop, call, ret — and your first stack frame</div></div>
+      </div>
+      <div class="mod">
+        <span class="idx">M4</span>
+        <div><div class="t">Functions &amp; Calling Conventions</div><div class="d">How C becomes assembly; System V &amp; Windows x64 ABIs</div></div>
+      </div>
+      <div class="mod">
+        <span class="idx">M5</span>
+        <div><div class="t">Reading Compiler Output</div><div class="d">Recognizing if/else, loops, structs, and arrays in disassembly</div></div>
+      </div>
+      <div class="mod">
+        <span class="idx">M6</span>
+        <div><div class="t">Intro to Reverse Engineering</div><div class="d">Static analysis workflow, strings, cross-references</div></div>
+      </div>
+      <div class="mod">
+        <span class="idx">M7</span>
+        <div><div class="t">Crackme Gauntlet</div><div class="d">A graded series of challenge binaries. Prove it.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="sec-eyebrow">Pricing</div>
+    <h2>Free to start. One price for everything.</h2>
+    <p class="sec-lede">No tiers, no upsells, no "enterprise plan." Learn free, and pay only if you want the full path.</p>
+    <div class="pricing">
+      <div class="price-card">
+        <h3>Free</h3>
+        <div class="price">$0</div>
+        <ul>
+          <li>Modules 0–1, fully interactive</li>
+          <li>No account required</li>
+          <li>Free forever</li>
+        </ul>
+        <a class="price-cta ghost" href="lesson-1.html">Start lesson 1 free</a>
+      </div>
+      <div class="price-card pro">
+        <h3>Full access</h3>
+        <div class="price">$19<span class="per"> / month</span></div>
+        <ul>
+          <li>All modules &amp; every future module</li>
+          <li>The full Crackme Gauntlet</li>
+          <li>Progress tracking &amp; solutions</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <a class="price-cta" href="#top">Get early access</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="sec-eyebrow">FAQ</div>
+    <h2>Questions people actually ask.</h2>
+    <div class="faq">
+      <details>
+        <summary>Is x86-64 assembly hard to learn?</summary>
+        <p>It has that reputation because most resources are static text. When you can execute each instruction and immediately see what changed, the mental model forms fast. By the end of the free modules you'll be comfortably reading simple assembly listings.</p>
+      </details>
+      <details>
+        <summary>Do I need to install anything?</summary>
+        <p>No. Everything — lessons, the stepper, the challenges — runs in your browser. No virtual machines, no NASM setup, no Linux requirement.</p>
+      </details>
+      <details>
+        <summary>Will this help with CTFs, malware analysis, or game hacking?</summary>
+        <p>That's the point of the curriculum's back half. Reading disassembly, understanding calling conventions, and tracing logic through a binary are the foundation skills for all three. StackFrame gets you to the point where tools like IDA and Ghidra start making sense.</p>
+      </details>
+      <details>
+        <summary>Do I need to know C or any programming first?</summary>
+        <p>No prior programming is required for modules 0–3. Some exposure to any language helps in the compiler-output modules, and we teach the C you need along the way.</p>
+      </details>
+      <details>
+        <summary>Why $19/month instead of a one-time price?</summary>
+        <p>The course keeps growing — new challenge binaries and modules ship regularly, and the challenge infrastructure has real running costs. You can finish the core path in one or two months and cancel anytime.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 StackFrame. Built by one person who thinks assembly is fun.</span>
+    <span><a href="#top">Join the waitlist</a></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // ---- demo program: sums 1..5 into RAX ----
+  var program = [
+    { addr: "0x401000", html: '<span class="mn">xor</span>&nbsp;&nbsp;rax, rax', run: function (s) { s.rax = 0n; s.zf = 1; } },
+    { addr: "0x401003", html: '<span class="mn">mov</span>&nbsp;&nbsp;rcx, 5',   run: function (s) { s.rcx = 5n; } },
+    { addr: "0x40100a", html: '<span class="mn">add</span>&nbsp;&nbsp;rax, rcx', run: function (s) { s.rax += s.rcx; s.zf = s.rax === 0n ? 1 : 0; } },
+    { addr: "0x40100d", html: '<span class="mn">dec</span>&nbsp;&nbsp;rcx',      run: function (s) { s.rcx -= 1n; s.zf = s.rcx === 0n ? 1 : 0; } },
+    { addr: "0x401010", html: '<span class="mn">jnz</span>&nbsp;&nbsp;0x40100a', run: function (s) { if (s.zf === 0) s.jump = 2; } },
+    { addr: "0x401012", html: '<span class="mn">ret</span>', run: function (s) { s.halted = true; } }
+  ];
+
+  var state, prev;
+  var asmView = document.getElementById("asmView");
+  var regView = document.getElementById("regView");
+  var hint = document.getElementById("hint");
+  var btnStep = document.getElementById("btnStep");
+
+  function freshState() {
+    return { rax: 0x1F4n, rbx: 0n, rcx: 0n, rip: 0, zf: 0, jump: -1, halted: false };
+  }
+  function hex(v) { return "0x" + v.toString(16).padStart(4, "0"); }
+
+  function render() {
+    var lines = "";
+    for (var i = 0; i < program.length; i++) {
+      lines += '<div class="asm-line' + (i === state.rip && !state.halted ? " current" : "") + '">' +
+        '<span class="addr">' + program[i].addr + "</span>" +
+        '<span class="op">' + program[i].html + "</span></div>";
+    }
+    asmView.innerHTML = lines;
+
+    var regs = [["RAX", state.rax], ["RBX", state.rbx], ["RCX", state.rcx]];
+    var out = "";
+    for (var j = 0; j < regs.length; j++) {
+      var name = regs[j][0], val = regs[j][1];
+      var changed = prev && prev[name.toLowerCase()] !== val;
+      out += '<div class="reg"><span class="rn">' + name + '</span><span class="rv' +
+        (changed ? " changed" : "") + '">' + hex(val) + "</span></div>";
+    }
+    out += '<div class="reg"><span class="rn">RIP</span><span class="rv">' +
+      (state.halted ? "halted" : program[state.rip].addr) + "</span></div>";
+    out += '<div class="flags">flags&nbsp;&nbsp;<b>ZF=' + state.zf + "</b></div>";
+    regView.innerHTML = out;
+  }
+
+  function step() {
+    if (state.halted) return;
+    prev = { rax: state.rax, rbx: state.rbx, rcx: state.rcx };
+    var instr = program[state.rip];
+    state.jump = -1;
+    instr.run(state);
+    if (state.halted) {
+      hint.textContent = "returned — rax holds the sum of 1..5 (0x000f). that's a loop.";
+      hint.classList.add("done");
+      btnStep.disabled = true;
+    } else {
+      state.rip = state.jump >= 0 ? state.jump : state.rip + 1;
+      hint.textContent = "executed " + instr.addr;
+      hint.classList.remove("done");
+    }
+    render();
+  }
+
+  function reset() {
+    state = freshState();
+    prev = null;
+    btnStep.disabled = false;
+    hint.textContent = "press step to execute";
+    hint.classList.remove("done");
+    render();
+  }
+
+  btnStep.addEventListener("click", step);
+  document.getElementById("btnReset").addEventListener("click", reset);
+  reset();
+
+  // ---- waitlist form ----
+  var form = document.getElementById("waitlistForm");
+  form.addEventListener("submit", function (e) {
+    var endpoint = form.getAttribute("action");
+    if (endpoint === "FORM_ENDPOINT_HERE") {
+      // No endpoint configured yet — show success locally so the page can be previewed.
+      e.preventDefault();
+      document.getElementById("formSuccess").style.display = "block";
+      form.style.display = "none";
+      return;
+    }
+    // With a real endpoint (e.g. Formspree), submit via fetch to stay on-page.
+    e.preventDefault();
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Accept": "application/json" },
+      body: new FormData(form)
+    }).then(function () {
+      document.getElementById("formSuccess").style.display = "block";
+      form.style.display = "none";
+    }).catch(function () {
+      form.submit(); // fallback to normal POST
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
